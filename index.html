@@ -58,36 +58,29 @@
     <div class="gallery" id="gallery"></div>
   </div>
 
-  <script>
-    const gallery = document.getElementById("gallery");
+<script>
+  const gallery = document.getElementById("gallery");
 
-    // 👇 SOLO EDITAS ESTA LISTA CON LOS NOMBRES DE TUS IMÁGENES
-    const imageNames = [
-      "morado.png",
-      "paneo1.png",
-      "pocima.png"
-    ];
+  const imageNames = [
+    "morado.png",
+    "paneo1.png",
+    "pocima.png"
+  ];
 
-    // Carpeta donde están guardadas las imágenes (ajusta si tu carpeta se llama distinto)
-    const folder = "imagenes";
+  const folder = "imagenes/"; // ← con barra
 
-    // Genera la galería
-    imageNames.forEach(name => {
-      const figure = document.createElement("figure");
+  imageNames.forEach(name => {
+    const figure = document.createElement("figure");
 
-      const img = document.createElement("imagenes");
-      imagenes.src = folder + name;
-      imagenes.alt = name;
+    const img = document.createElement("img"); // ← img, no "imagenes"
+    img.src = folder + name;
+    img.alt = name;
 
-      const caption = document.createElement("figcaption");
-      caption.textContent = name;
+    const caption = document.createElement("figcaption");
+    caption.textContent = name;
 
-      figure.appendChild(imagenes);
-      figure.appendChild(caption);
-      gallery.appendChild(figure);
-    });
-  </script>
-</body>
-</html>
-
-
+    figure.appendChild(img);
+    figure.appendChild(caption);
+    gallery.appendChild(figure);
+  });
+</script>
