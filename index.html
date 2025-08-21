@@ -31,4 +31,215 @@
     h1{margin:0 0 6px;font-size:clamp(20px,3.2vw,36px);font-weight:700;letter-spacing:.02em;}
     .sub{margin:0;color:var(--muted);font-size:clamp(12px,1.8vw,14px);}
 
-    .rail-wrap{po
+    .rail-wrap{position:relative;padding:10px 0 32px;}
+    .rail{
+      display:flex;
+      gap:var(--gap);
+      overflow-x:auto;
+      overscroll-behavior-x:contain;
+      scroll-snap-type:x mandatory;
+      padding:8px var(--rail-pad) 24px;
+      scrollbar-width:none;
+      perspective: 1000px;           /* para el efecto 3D */
+      align-items: center;            /* centra verticalmente las tarjetas */
+    }
+    .rail::-webkit-scrollbar{display:none}
+
+    .card{
+      scroll-snap-align:center;
+      background:var(--card);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      flex:0 0 auto;
+
+      /* --- Respeta el tamaño/proporción de cada imagen --- */
+      height: clamp(180px, 56vh, 620px); /* alto objetivo responsivo */
+      width: auto;                       /* ancho se calcula según la imagen */
+      max-width: min(85vw, 1000px);      /* límite de ancho para panorámicas */
+
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+
+      /* valores dinámicos que setea JS (para el carrusel 3D) */
+      --scale:1;
+      --tilt:0deg;
+      --alpha:1;
+      --elev:0;
+
+      transform: translateZ(var(--elev)) rotateY(var(--tilt)) scale(var(--scale));
+      opacity: var(--alpha);
+      transition: transform .25s ease, box-shadow .25s ease, opacity .2s ease;
+    }
+    .card:hover{ box-shadow: 0 10px 28px rgba(0,0,0,.16); }
+
+    .card img{
+      height: 100%;        /* llena en alto */
+      width: auto;         /* respeta proporción natural */
+      object-fit: contain; /* sin recortes */
+      display:block;
+      user-select:none;
+      -webkit-user-drag:none;
+    }
+
+    .ctrl{display:none;}
+    @media (min-width: 900px){
+      .ctrl{
+        display:block;
+        position:absolute; top:50%; transform:translateY(-50%);
+        background:rgba(255,255,255,.85);
+        border:none; width:42px; height:42px;
+        border-radius:999px; box-shadow:var(--shadow); cursor:pointer;
+      }
+      .ctrl.left{left:calc(var(--rail-pad) / 2);}
+      .ctrl.right{right:calc(var(--rail-pad) / 2);}
+      .ctrl:active{transform:translateY(-50%) scale(.98);}
+    }
+
+    footer{margin-top:auto;padding:16px;text-align:center;color:var(--muted);font-size:12px;}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Galería</h1>
+    <p class="sub">Swipe en móvil • Usa las flechas en desktop</p>
+  </header>
+
+  <section class="rail-wrap">
+    <button class="ctrl left" aria-label="Anterior">←</button>
+    <div class="rail" id="rail"></div>
+    <button class="ctrl right" aria-label="Siguiente">→</button>
+  </section>
+
+  <footer>© Tu proyecto</footer>
+
+  <script>
+    // ====== EDITA SOLO ESTO ======
+    const folder = "imagenes/";  // tu carpeta (con barra)
+    const imageNames = ["morado.png","paneo1.png","pocima.png"];
+    // =============================
+
+    const rail = document.getElementById("rail");
+
+    // Render tarjetas
+    imageNames.forEach(name=>{
+      const card = document.createElement("figure");
+      card.className = "card";
+      const img = document.createElement("img");
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.src = folder + name;
+      img.alt = "";
+      card.appendChild(img);
+      rail.appendChild(card);
+    });
+
+    // Botones desktop
+    const btnL = document.querySelector(".ctrl.left");
+    const btnR = document.querySelector(".ctrl.right");
+    const scrollAmount = () => {
+      // desplaza aprox. 2.5 tarjetas; usamos el ancho real de la tarjeta activa si existe
+      const active = [...rail.children].find(el => el.style.getPropertyValue("--scale") > 1);
+      const base = active || rail.querySelector(".card");
+      const w = base ? base.getBoundingClientRect().width : 300;
+      return w * 2.5;
+    };
+    btnL.addEventListener("click", () => rail.scrollBy({ left: -scrollAmount(), behavior: "smooth" }));
+    btnR.addEventListener("click", () => rail.scrollBy({ left:  scrollAmount(), behavior: "smooth" }));
+
+    // —— Efecto 3D: escala, opacidad y tilt según distancia al centro ——
+    let ticking = false;
+    function updateDepth(){
+      const cards = [...rail.children];
+      const rr = rail.getBoundingClientRect();
+      const center = rr.left + rr.width/2;
+
+      cards.forEach((el) => {
+        const r = el.getBoundingClientRect();
+        const mid = r.left + r.width/2;
+        const dx = mid - center;                // px al centro
+        const w  = rr.width/2;                  // semiancho visible
+        const t  = Math.min(1, Math.abs(dx)/w); // 0 centro, 1 borde
+
+        const minScale = 0.85, maxScale = 1.25;
+        const scale = minScale + (1 - t) * (maxScale - minScale);
+
+        const minAlpha = 0.55;
+        const alpha = minAlpha + (1 - t) * (1 - minAlpha);
+
+        const maxTilt = 12;                     // grados
+        const tilt = (dx / w) * maxTilt;
+
+        const elev = (1 - t) * 60 + "px";       // “salta” hacia el espectador
+
+        el.style.setProperty("--scale", scale.toFixed(3));
+        el.style.setProperty("--alpha", alpha.toFixed(3));
+        el.style.setProperty("--tilt",  tilt.toFixed(3) + "deg");
+        el.style.setProperty("--elev",  elev);
+        el.style.zIndex = String(1000 - Math.round(t * 1000));
+      });
+      ticking = false;
+    }
+
+    function onScroll(){
+      if (!ticking){
+        window.requestAnimationFrame(updateDepth);
+        ticking = true;
+      }
+    }
+
+    rail.addEventListener("scroll", onScroll, { passive:true });
+    window.addEventListener("resize", ()=>{ updateDepth(); centerNearest(false); });
+
+    // —— Centrados útiles ——
+    function centerCardIndex(idx, smooth=true){
+      const cards = [...rail.children];
+      if(!cards[idx]) return;
+      const el = cards[idx];
+      const offset = el.offsetLeft + el.offsetWidth/2 - rail.clientWidth/2;
+      rail.scrollTo({ left: offset, behavior: smooth ? "smooth" : "instant" });
+    }
+    function centerNearest(smooth=true){
+      const cards=[...rail.children];
+      const center = rail.scrollLeft + rail.clientWidth/2;
+      let best={i:0,d:Infinity};
+      cards.forEach((el,i)=>{
+        const mid = el.offsetLeft + el.offsetWidth/2;
+        const d = Math.abs(mid - center);
+        if(d < best.d) best = {i, d};
+      });
+      centerCardIndex(best.i, smooth);
+    }
+
+    // Centrar al tocar una tarjeta
+    rail.addEventListener("click", (e)=>{
+      const card = e.target.closest(".card");
+      if(!card) return;
+      const idx = [...rail.children].indexOf(card);
+      centerCardIndex(idx, true);
+    });
+
+    // Esperar a que carguen las imágenes para centrar la del medio (móvil/desktop)
+    function initCenterAfterImages(){
+      const imgs = [...rail.querySelectorAll("img")];
+      let remaining = imgs.length;
+      const done = ()=>{ 
+        if(--remaining <= 0){
+          updateDepth();
+          const middleIndex = Math.floor(rail.children.length/2);
+          centerCardIndex(middleIndex, false);      // centra sin animación
+          setTimeout(()=>{ updateDepth(); centerNearest(false); }, 120); // ajuste móvil
+        }
+      };
+      if(remaining === 0){ done(); return; }
+      imgs.forEach(img=>{
+        if(img.complete) done();
+        else img.addEventListener("load", done, {once:true});
+      });
+    }
+
+    initCenterAfterImages();
+  </script>
+</body>
+</html>
