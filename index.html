@@ -35,7 +35,7 @@
     .rail-wrap{
       position:relative;
       padding:10px 0 32px;
-      overscroll-behavior-y: contain; /* evita rebote vertical en móvil */
+      overscroll-behavior-y: contain;
     }
     .rail{
       display:flex;
@@ -45,11 +45,12 @@
       scroll-snap-type:x mandatory;
       padding:8px var(--rail-pad) 24px;
       scrollbar-width:none;
-      perspective: 1000px;    /* efecto 3D */
-      align-items: center;     /* centra verticalmente las tarjetas */
+      perspective: 1000px;         /* efecto 3D */
+      align-items: center;
     }
     .rail::-webkit-scrollbar{display:none}
 
+    /* --- Tarjetas: MISMO TAMAÑO --- */
     .card{
       scroll-snap-align:center;
       background:var(--card);
@@ -57,10 +58,8 @@
       box-shadow:var(--shadow);
       flex:0 0 auto;
 
-      /* Respeta tamaño/proporción de cada imagen */
-      height: clamp(180px, 56vh, 620px);
-      width: auto;
-      max-width: min(85vw, 1000px);
+      width: clamp(160px, 26vw, 320px); /* ancho uniforme responsivo */
+      aspect-ratio: 3 / 4;              /* alto se calcula con la proporción */
 
       display:flex;
       align-items:center;
@@ -76,15 +75,15 @@
       transform: translateZ(var(--elev)) rotateY(var(--tilt)) scale(var(--scale));
       opacity: var(--alpha);
       transition: transform .25s ease, box-shadow .25s ease, opacity .2s ease;
-      will-change: transform, opacity; /* suaviza animación */
+      will-change: transform, opacity;
       cursor: zoom-in;
     }
     .card:hover{ box-shadow: 0 10px 28px rgba(0,0,0,.16); }
 
     .card img{
+      width: 100%;
       height: 100%;
-      width: auto;
-      object-fit: contain;
+      object-fit: cover; /* 👈 llena la tarjeta (puede recortar). Cambia a 'contain' si no quieres recorte */
       display:block;
       user-select:none;
       -webkit-user-drag:none;
@@ -167,7 +166,7 @@
 
   <script>
     // ====== EDITA SOLO ESTO ======
-    const folder = "imagenes/";                     // tu carpeta (con barra)
+    const folder = "imagenes/";  // tu carpeta (con barra)
     const imageNames = ["DSC2103.jpg","DSC2104.jpg","DSC2105.jpg","DSC2106.jpg"];
     // =============================
 
@@ -234,9 +233,6 @@
       const offset = el.offsetLeft + el.offsetWidth/2 - rail.clientWidth/2;
       rail.scrollTo({ left: offset, behavior: smooth ? "smooth" : "auto" });
     }
-    function centerNearest(smooth=true){
-      centerCardIndex(getNearestIndex(), smooth);
-    }
     function getNearestIndex(){
       const cards = [...rail.children];
       const center = rail.scrollLeft + rail.clientWidth/2;
@@ -248,16 +244,11 @@
       });
       return best;
     }
-    function centerPrev(smooth=true){
-      const i = getNearestIndex();
-      centerCardIndex(Math.max(0, i - 1), smooth);
-    }
-    function centerNext(smooth=true){
-      const i = getNearestIndex();
-      centerCardIndex(Math.min(rail.children.length - 1, i + 1), smooth);
-    }
+    function centerNearest(smooth=true){ centerCardIndex(getNearestIndex(), smooth); }
+    function centerPrev(smooth=true){ centerCardIndex(Math.max(0, getNearestIndex()-1), smooth); }
+    function centerNext(smooth=true){ centerCardIndex(Math.min(rail.children.length-1, getNearestIndex()+1), smooth); }
 
-    // Botones desktop → centran por índice (no por píxeles)
+    // Botones desktop → centran por índice
     const btnL = document.querySelector(".ctrl.left");
     const btnR = document.querySelector(".ctrl.right");
     btnL.addEventListener("click", () => centerPrev(true));
@@ -266,11 +257,9 @@
     // Scroll con auto-snap al terminar
     let snapTimer;
     rail.addEventListener("scroll", () => {
-      onScroll();                    // actualiza efecto 3D
+      onScroll();                 // efecto 3D en tiempo real
       clearTimeout(snapTimer);
-      snapTimer = setTimeout(() => { // ajusta centrándose exactamente
-        centerNearest(true);
-      }, 120);
+      snapTimer = setTimeout(() => centerNearest(true), 120);
     }, { passive:true });
 
     window.addEventListener("resize", ()=>{ updateDepth(); centerNearest(false); });
