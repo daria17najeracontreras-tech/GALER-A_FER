@@ -32,7 +32,7 @@
     h1{margin:0 0 6px;font-size:clamp(20px,3.2vw,36px);font-weight:700;letter-spacing:.02em;}
     .sub{margin:0;color:var(--muted);font-size:clamp(12px,1.8vw,14px);}
 
-    .rail-wrap{position:relative;padding:10px 0 32px; overscroll-behavior-y: contain;}
+    .rail-wrap{position:relative;padding:10px 0 32px;}
     .rail{
       display:flex;
       gap:var(--gap);
@@ -45,11 +45,6 @@
       align-items: center;     /* centra verticalmente las tarjetas */
     }
     .rail::-webkit-scrollbar{display:none}
-
-    /* En móviles: desactiva paneo horizontal nativo y dejamos solo pan-y */
-    @media (hover:none) and (pointer:coarse){
-      .rail{ touch-action: pan-y; }
-    }
 
     .card{
       scroll-snap-align:center;
@@ -146,7 +141,7 @@
 <body>
   <header>
     <h1>Galería</h1>
-    <p class="sub">Swipe vertical en móvil • Flechas en desktop</p>
+    <p class="sub">Swipe en móvil • Usa las flechas en desktop</p>
   </header>
 
   <section class="rail-wrap">
@@ -186,7 +181,7 @@
       rail.appendChild(card);
     });
 
-    // Botones desktop (horizontal)
+    // Botones desktop
     const btnL = document.querySelector(".ctrl.left");
     const btnR = document.querySelector(".ctrl.right");
     const scrollAmount = () => {
@@ -286,7 +281,7 @@
       modalImg.src = folder + imageNames[currentIndex];
     }
 
-    // Abrir modal al tocar una tarjeta (y centrarla)
+    // Abrir modal al tocar una tarjeta (y céntrala)
     rail.addEventListener("click", (e)=>{
       const card = e.target.closest(".card");
       if(!card) return;
@@ -295,11 +290,16 @@
       openModal(idx);
     });
 
-    // Cerrar/navegar en modal (botones/teclado)
+    // Cerrar/navegar en modal
     closeBtn.addEventListener("click", closeModal);
-    modal.addEventListener("click", (e)=>{ if(e.target === modal) closeModal(); });
+    modal.addEventListener("click", (e)=>{
+      // Cerrar al hacer clic fuera de la imagen
+      if(e.target === modal) closeModal();
+    });
     navL.addEventListener("click", ()=>show(-1));
     navR.addEventListener("click", ()=>show(1));
+
+    // Teclado
     window.addEventListener("keydown", (e)=>{
       if(!modal.classList.contains("open")) return;
       if(e.key === "Escape") closeModal();
@@ -307,55 +307,15 @@
       else if(e.key === "ArrowRight") show(1);
     });
 
-    // —— Swipe VERTICAL SOLO EN MÓVIL ——
-    const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-
-    // En el carrusel (rail): swipe ↑ siguiente, swipe ↓ anterior
-    if(isTouch){
-      let tsY=null, tsX=null;
-      rail.addEventListener('touchstart', e=>{
-        if(e.touches.length===1){
-          tsY = e.touches[0].clientY;
-          tsX = e.touches[0].clientX;
-        }
-      }, {passive:true});
-
-      rail.addEventListener('touchend', e=>{
-        if(tsY===null) return;
-        const dy = e.changedTouches[0].clientY - tsY;
-        const dx = e.changedTouches[0].clientX - tsX;
-        const TH = 40; // umbral
-        if(Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > TH){
-          // vertical: arriba = siguiente, abajo = anterior
-          centerNearest(true);
-          if(dy < 0){
-            rail.scrollBy({ left:  scrollAmount(), behavior:'smooth' });
-          }else{
-            rail.scrollBy({ left: -scrollAmount(), behavior:'smooth' });
-          }
-        }
-        tsY = tsX = null;
-      }, {passive:true});
-    }
-
-    // En el modal: también vertical (↑ siguiente, ↓ anterior)
-    if(isTouch){
-      let sy=null, sx=null;
-      modal.addEventListener("touchstart",(e)=>{
-        sy = e.touches[0].clientY;
-        sx = e.touches[0].clientX;
-      }, {passive:true});
-      modal.addEventListener("touchend",(e)=>{
-        if(sy===null) return;
-        const dy = e.changedTouches[0].clientY - sy;
-        const dx = e.changedTouches[0].clientX - sx;
-        const TH = 40;
-        if(Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > TH){
-          if(dy < 0) show(1); else show(-1);  // arriba siguiente, abajo anterior
-        }
-        sy = sx = null;
-      }, {passive:true});
-    }
+    // Gestos básicos en móvil (swipe)
+    let sx = null;
+    modal.addEventListener("touchstart", (e)=>{ sx = e.touches[0].clientX; }, {passive:true});
+    modal.addEventListener("touchend", (e)=>{
+      if(sx===null) return;
+      const dx = e.changedTouches[0].clientX - sx;
+      if(Math.abs(dx) > 40) show(dx>0 ? -1 : 1);
+      sx = null;
+    }, {passive:true});
 
     // Centrar al cargar (móvil/desktop)
     function initCenterAfterImages(){
