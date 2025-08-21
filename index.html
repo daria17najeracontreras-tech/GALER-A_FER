@@ -345,3 +345,37 @@
         sy = e.touches[0].clientY;
         sx = e.touches[0].clientX;
       }, {passive:true});
+      modal.addEventListener("touchend",(e)=>{
+        if(sy===null) return;
+        const dy = e.changedTouches[0].clientY - sy;
+        const dx = e.changedTouches[0].clientX - sx;
+        const TH = 40;
+        if(Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > TH){
+          if(dy < 0) show(1); else show(-1);  // arriba siguiente, abajo anterior
+        }
+        sy = sx = null;
+      }, {passive:true});
+    }
+
+    // Centrar al cargar (móvil/desktop)
+    function initCenterAfterImages(){
+      const imgs = [...rail.querySelectorAll("img")];
+      let remaining = imgs.length;
+      const done = ()=>{ 
+        if(--remaining <= 0){
+          updateDepth();
+          const middleIndex = Math.floor(rail.children.length/2);
+          centerCardIndex(middleIndex, false);
+          setTimeout(()=>{ updateDepth(); centerNearest(false); }, 120);
+        }
+      };
+      if(remaining === 0){ done(); return; }
+      imgs.forEach(img=>{
+        if(img.complete) done();
+        else img.addEventListener("load", done, {once:true});
+      });
+    }
+    initCenterAfterImages();
+  </script>
+</body>
+</html>
