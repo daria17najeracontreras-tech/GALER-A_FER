@@ -32,7 +32,11 @@
     h1{margin:0 0 6px;font-size:clamp(20px,3.2vw,36px);font-weight:700;letter-spacing:.02em;}
     .sub{margin:0;color:var(--muted);font-size:clamp(12px,1.8vw,14px);}
 
-    .rail-wrap{position:relative;padding:10px 0 32px;}
+    .rail-wrap{
+      position:relative;
+      padding:10px 0 32px;
+      overscroll-behavior-y: contain; /* evita rebote vertical en móvil */
+    }
     .rail{
       display:flex;
       gap:var(--gap);
@@ -72,6 +76,7 @@
       transform: translateZ(var(--elev)) rotateY(var(--tilt)) scale(var(--scale));
       opacity: var(--alpha);
       transition: transform .25s ease, box-shadow .25s ease, opacity .2s ease;
+      will-change: transform, opacity; /* suaviza animación */
       cursor: zoom-in;
     }
     .card:hover{ box-shadow: 0 10px 28px rgba(0,0,0,.16); }
@@ -181,17 +186,6 @@
       rail.appendChild(card);
     });
 
-    // Botones desktop
-    const btnL = document.querySelector(".ctrl.left");
-    const btnR = document.querySelector(".ctrl.right");
-    const scrollAmount = () => {
-      const base = rail.querySelector(".card");
-      const w = base ? base.getBoundingClientRect().width : 300;
-      return w * 2.5;
-    };
-    btnL.addEventListener("click", () => rail.scrollBy({ left: -scrollAmount(), behavior: "smooth" }));
-    btnR.addEventListener("click", () => rail.scrollBy({ left:  scrollAmount(), behavior: "smooth" }));
-
     // —— Efecto 3D: escala, opacidad y tilt según distancia al centro ——
     let ticking = false;
     function updateDepth(){
@@ -231,8 +225,6 @@
         ticking = true;
       }
     }
-    rail.addEventListener("scroll", onScroll, { passive:true });
-    window.addEventListener("resize", ()=>{ updateDepth(); centerNearest(false); });
 
     // —— Centrados útiles ——
     function centerCardIndex(idx, smooth=true){
@@ -240,19 +232,48 @@
       if(!cards[idx]) return;
       const el = cards[idx];
       const offset = el.offsetLeft + el.offsetWidth/2 - rail.clientWidth/2;
-      rail.scrollTo({ left: offset, behavior: smooth ? "smooth" : "instant" });
+      rail.scrollTo({ left: offset, behavior: smooth ? "smooth" : "auto" });
     }
     function centerNearest(smooth=true){
-      const cards=[...rail.children];
+      centerCardIndex(getNearestIndex(), smooth);
+    }
+    function getNearestIndex(){
+      const cards = [...rail.children];
       const center = rail.scrollLeft + rail.clientWidth/2;
-      let best={i:0,d:Infinity};
+      let best = 0, bestD = Infinity;
       cards.forEach((el,i)=>{
         const mid = el.offsetLeft + el.offsetWidth/2;
         const d = Math.abs(mid - center);
-        if(d < best.d) best = {i, d};
+        if(d < bestD){ bestD = d; best = i; }
       });
-      centerCardIndex(best.i, smooth);
+      return best;
     }
+    function centerPrev(smooth=true){
+      const i = getNearestIndex();
+      centerCardIndex(Math.max(0, i - 1), smooth);
+    }
+    function centerNext(smooth=true){
+      const i = getNearestIndex();
+      centerCardIndex(Math.min(rail.children.length - 1, i + 1), smooth);
+    }
+
+    // Botones desktop → centran por índice (no por píxeles)
+    const btnL = document.querySelector(".ctrl.left");
+    const btnR = document.querySelector(".ctrl.right");
+    btnL.addEventListener("click", () => centerPrev(true));
+    btnR.addEventListener("click", () => centerNext(true));
+
+    // Scroll con auto-snap al terminar
+    let snapTimer;
+    rail.addEventListener("scroll", () => {
+      onScroll();                    // actualiza efecto 3D
+      clearTimeout(snapTimer);
+      snapTimer = setTimeout(() => { // ajusta centrándose exactamente
+        centerNearest(true);
+      }, 120);
+    }, { passive:true });
+
+    window.addEventListener("resize", ()=>{ updateDepth(); centerNearest(false); });
 
     // === Modal / Visor ===
     const modal = document.getElementById("modal");
@@ -266,6 +287,7 @@
       currentIndex = index;
       modalImg.src = folder + imageNames[currentIndex];
       modal.classList.add("open");
+      modal.setAttribute("aria-hidden","false");
       document.body.classList.add("no-scroll");
       // Preload vecinas
       const next = new Image(); next.src = folder + imageNames[(currentIndex+1)%imageNames.length];
@@ -273,6 +295,7 @@
     }
     function closeModal(){
       modal.classList.remove("open");
+      modal.setAttribute("aria-hidden","true");
       document.body.classList.remove("no-scroll");
       modalImg.src = "";
     }
@@ -292,10 +315,7 @@
 
     // Cerrar/navegar en modal
     closeBtn.addEventListener("click", closeModal);
-    modal.addEventListener("click", (e)=>{
-      // Cerrar al hacer clic fuera de la imagen
-      if(e.target === modal) closeModal();
-    });
+    modal.addEventListener("click", (e)=>{ if(e.target === modal) closeModal(); });
     navL.addEventListener("click", ()=>show(-1));
     navR.addEventListener("click", ()=>show(1));
 
@@ -307,7 +327,7 @@
       else if(e.key === "ArrowRight") show(1);
     });
 
-    // Gestos básicos en móvil (swipe)
+    // Swipe horizontal básico en modal
     let sx = null;
     modal.addEventListener("touchstart", (e)=>{ sx = e.touches[0].clientX; }, {passive:true});
     modal.addEventListener("touchend", (e)=>{
@@ -339,7 +359,3 @@
   </script>
 </body>
 </html>
-
-
-
-
