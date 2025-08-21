@@ -10,10 +10,14 @@
       --ink:#2a2a2a;
       --card:#ffffff;
       --muted:#8a8a8a;
-      --radius:16px;
+      --radius:18px;
       --shadow:0 6px 20px rgba(0,0,0,.12);
-      --gap:clamp(12px, 3vw, 28px);
-      --rail-pad:clamp(12px, 6vw, 64px);
+      --gap:clamp(12px, 4vw, 24px);
+      --rail-pad:clamp(8px, 4vw, 56px);
+
+      /* 👉 tamaño de la tarjeta en preview */
+      --card-w: clamp(260px, 86vw, 520px); /* ~86% del ancho en móvil */
+      --card-ratio: 3 / 4;                 /* cambia a 4/3 o 1/1 si quieres */
     }
 
     *{box-sizing:border-box}
@@ -50,7 +54,7 @@
     }
     .rail::-webkit-scrollbar{display:none}
 
-    /* --- Tarjetas: MISMO TAMAÑO --- */
+    /* --- Tarjetas: MISMO TAMAÑO y grandes en móvil --- */
     .card{
       scroll-snap-align:center;
       background:var(--card);
@@ -58,8 +62,8 @@
       box-shadow:var(--shadow);
       flex:0 0 auto;
 
-      width: clamp(160px, 26vw, 320px); /* ancho uniforme responsivo */
-      aspect-ratio: 3 / 4;              /* alto se calcula con la proporción */
+      width: var(--card-w);
+      aspect-ratio: var(--card-ratio);
 
       display:flex;
       align-items:center;
@@ -83,7 +87,7 @@
     .card img{
       width: 100%;
       height: 100%;
-      object-fit: cover; /* 👈 llena la tarjeta (puede recortar). Cambia a 'contain' si no quieres recorte */
+      object-fit: cover; /* llena la tarjeta (si no quieres recorte usa 'contain') */
       display:block;
       user-select:none;
       -webkit-user-drag:none;
@@ -168,6 +172,7 @@
     // ====== EDITA SOLO ESTO ======
     const folder = "imagenes/";  // tu carpeta (con barra)
     const imageNames = ["DSC2103.jpg","DSC2104.jpg","DSC2105.jpg","DSC2106.jpg"];
+    const START_INDEX = 0;       // 0 = empieza en la primera, o usa Math.floor(imageNames.length/2)
     // =============================
 
     const rail = document.getElementById("rail");
@@ -199,16 +204,16 @@
         const w  = rr.width/2;
         const t  = Math.min(1, Math.abs(dx)/w); // 0 centro, 1 borde
 
-        const minScale = 0.85, maxScale = 1.25;
+        const minScale = 0.9, maxScale = 1.2;    // suavicé el zoom con tarjetas más grandes
         const scale = minScale + (1 - t) * (maxScale - minScale);
 
-        const minAlpha = 0.55;
+        const minAlpha = 0.65;
         const alpha = minAlpha + (1 - t) * (1 - minAlpha);
 
-        const maxTilt = 12;                     // grados
+        const maxTilt = 10;                      // grados
         const tilt = (dx / w) * maxTilt;
 
-        const elev = (1 - t) * 60 + "px";
+        const elev = (1 - t) * 40 + "px";
 
         el.style.setProperty("--scale", scale.toFixed(3));
         el.style.setProperty("--alpha", alpha.toFixed(3));
@@ -326,15 +331,14 @@
       sx = null;
     }, {passive:true});
 
-    // Centrar al cargar (móvil/desktop)
+    // Centrar al cargar (elige qué índice arrancar)
     function initCenterAfterImages(){
       const imgs = [...rail.querySelectorAll("img")];
       let remaining = imgs.length;
       const done = ()=>{ 
         if(--remaining <= 0){
           updateDepth();
-          const middleIndex = Math.floor(rail.children.length/2);
-          centerCardIndex(middleIndex, false);
+          centerCardIndex(START_INDEX, false);
           setTimeout(()=>{ updateDepth(); centerNearest(false); }, 120);
         }
       };
