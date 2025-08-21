@@ -69,23 +69,24 @@
     ];
 
     // Carpeta donde están guardadas las imágenes (ajusta si tu carpeta se llama distinto)
-    const folder = "img/";
+    const folder = "imagenes";
 
     // Genera la galería
     imageNames.forEach(name => {
       const figure = document.createElement("figure");
 
-      const img = document.createElement("img");
-      img.src = folder + name;
-      img.alt = name;
+      const img = document.createElement("imagenes");
+      imagenes.src = folder + name;
+      imagenes.alt = name;
 
       const caption = document.createElement("figcaption");
       caption.textContent = name;
 
-      figure.appendChild(img);
+      figure.appendChild(imagenes);
       figure.appendChild(caption);
       gallery.appendChild(figure);
     });
   </script>
 </body>
 </html>
+
